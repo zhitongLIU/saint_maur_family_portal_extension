@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Peri Scolaire to ICS</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      width: 300px;
+      padding: 10px;
+    }
+    .date-selector {
+      margin: 10px 0;
+    }
+    .date-selector label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .date-inputs {
+      display: flex;
+      gap: 5px;
+    }
+    select {
+      padding: 5px;
+      border-radius: 3px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 15px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) {
+      background-color: #45a049;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .warning-message {
+      color: #D8000C;
+      background-color: #FFD2D2;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      display: none; /* Hidden by default */
+    }
+    .reminder-section {
+      margin: 20px 0;
+      padding-top: 15px;
+      border-top: 1px solid #ccc;
+    }
+    
+    .reminder-section label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .reminder-input {
+      width: 150px;
+      padding: 5px;
+      border-radius: 3px;
+      border: 1px solid #ccc;
+    }
+    
+    .reminder-text {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h3>Saint-Maur Scolaires Reservations Export</h3>
+  
+  <div id="warningMessage" class="warning-message">
+    Merci de vous connecter sur le portail famille
+  </div>
+  
+  <div class="date-selector">
+    <label for="fromDate">From:</label>
+    <div class="date-inputs">
+      <select id="fromMonth">
+        <option value="01">Janvier</option>
+        <option value="02">Fevrier</option>
+        <option value="03">Mars</option>
+        <option value="04">Avril</option>
+        <option value="05">Mai</option>
+        <option value="06">Juin</option>
+        <option value="07">Juillet</option>
+        <option value="08">Aout</option>
+        <option value="09">Septembre</option>
+        <option value="10">Octobre</option>
+        <option value="11">Novembre</option>
+        <option value="12">Decembre</option>
+      </select>
+      <select id="fromYear">
+        <!-- Will be populated by JavaScript -->
+      </select>
+    </div>
+  </div>
+
+  <div class="date-selector">
+    <label for="toDate">To:</label>
+    <div class="date-inputs">
+      <select id="toMonth">
+        <option value="01">Janvier</option>
+        <option value="02">Fevrier</option>
+        <option value="03">Mars</option>
+        <option value="04">Avril</option>
+        <option value="05">Mai</option>
+        <option value="06">Juin</option>
+        <option value="07">Juillet</option>
+        <option value="08">Aout</option>
+        <option value="09">Septembre</option>
+        <option value="10">Octobre</option>
+        <option value="11">Novembre</option>
+        <option value="12">Decembre</option>
+      </select>
+      <select id="toYear">
+        <!-- Will be populated by JavaScript -->
+      </select>
+    </div>
+  </div>
+
+  <div class="reminder-section">
+    <label for="reminderDay">Rappel de payment frais scorlaire:</label>
+    <select id="reminderDay" class="reminder-input">
+      <option value="">No Reminder</option>
+    </select>
+    <div class="reminder-text">
+      Selectionez une date du mois pour les rappeles.
+    </div>
+  </div>
+
+  <button id="saveEvents">Download</button>
+  <script src="popup.js"></script>
+</body>
+</html> 

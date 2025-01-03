@@ -1,0 +1,8 @@
+#warningMessage a {
+  color: #0066cc;
+  text-decoration: underline;
+}
+
+#warningMessage a:hover {
+  color: #003366;
+} 

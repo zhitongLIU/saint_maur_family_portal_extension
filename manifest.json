@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Saint-Maur Peri Scolaire Exporter",
+  "version": "1.0",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "downloads",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://portalssl.agoraplus.fr/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "host_permissions": [
+    "https://smdf.agoraplus.fr/*",
+    "https://portalssl.agoraplus.fr/*"
+  ]
+} 
