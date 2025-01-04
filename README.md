@@ -16,10 +16,15 @@ Cette extension est fait en reverse engineering de l'API du Portail Famille de S
 
 ## Installation
 
-1. Clonez ce dépôt ou téléchargez le code source
+1. Téléchargez le derniere release depuis ce projet
+![install_step_1](screenshots/install_1.png)
 2. Ouvrez Chrome et accédez à `chrome://extensions/`
+![install_step_2](screenshots/install_2.png)
 3. Activez le "Mode développeur" en haut à droite
 4. Cliquez sur "Charger l'extension non empaquetée" et sélectionnez le dossier de l'extension
+![install_step_3](screenshots/install_3.png)
+![install_step_4](screenshots/install_4.png)
+![install_step_5](screenshots/install_5.png)
 
 ## Utilisation
 
@@ -28,7 +33,14 @@ Cette extension est fait en reverse engineering de l'API du Portail Famille de S
 3. Sélectionnez la période à exporter
 4. (Optionnel) Configurez un rappel mensuel de paiement
 5. Cliquez sur "Download" pour générer et sauvegarder le fichier ICS
-6. Importez le fichier ICS dans votre application de calendrier préférée
+![usage_1](screenshots/usage_1.png)
+6. Importez le fichier ICS dans votre application de calendrier préférée (example google calandrier)
+    a. Créez un nouveau calendier est fortement conseilée
+    ![usage_2](screenshots/usage_2.png)
+    b. Importez le fichier .ics téléchargé
+    ![usage_3](screenshots/usage_3.png)
+    c. Et Voila!
+
 
 ## Configuration
 
