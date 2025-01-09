@@ -16,15 +16,7 @@ Cette extension est fait en reverse engineering de l'API du Portail Famille de S
 
 ## Installation
 
-1. Téléchargez le derniere release depuis ce projet
-![install_step_1](screenshots/install_1.png)
-2. Ouvrez Chrome et accédez à `chrome://extensions/`
-![install_step_2](screenshots/install_2.png)
-3. Activez le "Mode développeur" en haut à droite
-4. Cliquez sur "Charger l'extension non empaquetée" et sélectionnez le dossier de l'extension
-![install_step_3](screenshots/install_3.png)
-![install_step_4](screenshots/install_4.png)
-![install_step_5](screenshots/install_5.png)
+Installez depuis [Chrome Web Store](https://chromewebstore.google.com/detail/saint-maur-peri-scolaire/iffadildjminpbhaeemmmhkcgocdpbhn)
 
 ## Utilisation
 
