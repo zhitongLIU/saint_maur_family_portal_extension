@@ -1,10 +1,13 @@
 import { fetchChildIds, fetchEvents } from './background/api.js';
 import { generateICSContent } from './background/ics-generator.js';
-import { generateFilename, downloadICSFile } from './background/file-handler.js';
+import { generateFilename, downloadICSFile, downloadCSVFile } from './background/file-handler.js';
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'fetchReservations') {
     handleReservations();
+  }
+  if (request.action === 'downloadCsv') {
+    handleCsvDownload(request);
   }
 });
 
@@ -33,6 +36,21 @@ async function handleReservations() {
   } catch (error) {
     console.error("Error in handleReservations:", error);
     chrome.runtime.sendMessage({ action: 'downloadError' });
+  }
+} 
+
+async function handleCsvDownload(request) {
+  try {
+    const { filename, csvContent } = request || {};
+    if (!filename || !csvContent) {
+      chrome.runtime.sendMessage({ action: 'downloadCsvError' });
+      return;
+    }
+    await downloadCSVFile(csvContent, filename);
+    chrome.runtime.sendMessage({ action: 'downloadCsvComplete' });
+  } catch (error) {
+    console.error("Error in handleCsvDownload:", error);
+    chrome.runtime.sendMessage({ action: 'downloadCsvError' });
   }
 }
 

@@ -28,4 +28,27 @@ function downloadICSFile(icsContent, filename) {
   });
 }
 
-export { generateFilename, downloadICSFile }; 
+function downloadCSVFile(csvContent, filename) {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+      try {
+        await chrome.downloads.download({
+          url: e.target.result,
+          filename: filename,
+          saveAs: true
+        });
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+export { generateFilename, downloadICSFile, downloadCSVFile };

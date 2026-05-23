@@ -41,6 +41,15 @@ Cette extension est fait en reverse engineering de l'API du Portail Famille de S
     ![usage_3](screenshots/usage_3.png)
     c. Et Voila!
 
+## Export facture PDF → CSV
+
+Dans la popup de l'extension, vous pouvez aussi déposer une **facture PDF** (1ère page) dans la zone "Facture PDF → CSV".
+L'extension extrait les lignes du tableau (description, quantité, tarif, montant) et télécharge un fichier CSV au format :
+
+`month;category;description;quantity;tarif;montant`
+
+Le champ `month` est au format `YYYY-MM` et est déduit de la ligne **"Période du ..."** (sinon fallback sur le titre "PERISCOLAIRE ...").
+
 
 ## Configuration
 

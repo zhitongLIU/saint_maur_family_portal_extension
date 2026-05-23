@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <title>Peri Scolaire to ICS</title>
   <style>
     body {
@@ -50,7 +51,6 @@
       display: none; /* Hidden by default */
     }
     .reminder-section {
-      margin: 20px 0;
       padding-top: 15px;
       border-top: 1px solid #ccc;
     }
@@ -70,12 +70,155 @@
     .reminder-text {
       font-size: 0.9em;
       color: #666;
-      margin-top: 5px;
+    }
+
+    .invoice-section {
+      margin: 20px 0;
+      padding-top: 15px;
+      border-top: 1px solid #ccc;
+    }
+
+    .dropzone {
+      border: 2px dashed #999;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      color: #444;
+      background: #fafafa;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .dropzone.dragover {
+      border-color: #4CAF50;
+      background: #f1fff3;
+    }
+
+    .status {
+      margin-top: 8px;
+      font-size: 0.9em;
+      color: #333;
+      min-height: 18px;
+    }
+
+    .status.error {
+      color: #D8000C;
+    }
+
+    .pdf-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .secondary-button {
+      display: block;
+      width: 100%;
+      padding: 8px 10px;
+      margin-top: 0;
+      background-color: #2d6cdf;
+    }
+
+    .secondary-button:hover:not(:disabled) {
+      background-color: #2458b6;
+    }
+
+    .secondary-button:disabled {
+      background-color: #b9c8e9;
+      cursor: not-allowed;
+      opacity: 1;
+    }
+
+    .pdf-results {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pdf-item {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .pdf-item:hover {
+      border-color: #b9c8e9;
+      background: #f7fbff;
+    }
+
+    .pdf-item-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .pdf-item-title {
+      font-size: 0.92em;
+      color: #222;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 210px;
+    }
+
+    .pdf-item-meta {
+      font-size: 0.85em;
+      color: #666;
+    }
+
+    .pdf-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .tiny-button {
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      color: white;
+      background-color: #4CAF50;
+    }
+
+    .tiny-button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+
+    .tiny-button.danger {
+      background-color: #d9534f;
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #ddd;
+      border-top-color: #4CAF50;
+      animation: spin 0.9s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <h3>Saint-Maur Scolaires Reservations Export</h3>
+	  <h3>Saint-Maur Scolaires Réservations Export</h3>
+  <div class="reminder-text" style="margin-top:2px; margin-bottom:10px">
+    Exportez les réservations périscolaires de vos enfants en événements calendrier (ICS) pour les importer ensuite dans Google Calendar ou une autre application.
+  </div>
   
   <div id="warningMessage" class="warning-message">
     Merci de vous connecter sur le portail famille
@@ -86,17 +229,17 @@
     <div class="date-inputs">
       <select id="fromMonth">
         <option value="01">Janvier</option>
-        <option value="02">Fevrier</option>
+	        <option value="02">Février</option>
         <option value="03">Mars</option>
         <option value="04">Avril</option>
         <option value="05">Mai</option>
         <option value="06">Juin</option>
         <option value="07">Juillet</option>
-        <option value="08">Aout</option>
+	        <option value="08">Août</option>
         <option value="09">Septembre</option>
         <option value="10">Octobre</option>
         <option value="11">Novembre</option>
-        <option value="12">Decembre</option>
+	        <option value="12">Décembre</option>
       </select>
       <select id="fromYear">
         <!-- Will be populated by JavaScript -->
@@ -109,17 +252,17 @@
     <div class="date-inputs">
       <select id="toMonth">
         <option value="01">Janvier</option>
-        <option value="02">Fevrier</option>
+	        <option value="02">Février</option>
         <option value="03">Mars</option>
         <option value="04">Avril</option>
         <option value="05">Mai</option>
         <option value="06">Juin</option>
         <option value="07">Juillet</option>
-        <option value="08">Aout</option>
+	        <option value="08">Août</option>
         <option value="09">Septembre</option>
         <option value="10">Octobre</option>
         <option value="11">Novembre</option>
-        <option value="12">Decembre</option>
+	        <option value="12">Décembre</option>
       </select>
       <select id="toYear">
         <!-- Will be populated by JavaScript -->
@@ -128,16 +271,41 @@
   </div>
 
   <div class="reminder-section">
-    <label for="reminderDay">Rappel de payment frais scorlaire:</label>
+	    <label for="reminderDay">(optionnel) Rappel de paiement frais scolaire :</label>
     <select id="reminderDay" class="reminder-input">
       <option value="">No Reminder</option>
     </select>
     <div class="reminder-text">
-      Selectionez une date du mois pour les rappeles.
+	      Sélectionnez une date du mois pour les rappels.
     </div>
   </div>
 
   <button id="saveEvents">Download</button>
+
+	  <div class="invoice-section">
+		    <h4>Convertir facture en CSV</h4>
+	    <div class="reminder-text" style="margin-bottom:10px">
+		      Utile pour analyser vos dépenses (Excel/Sheets) et, selon votre situation, préparer vos justificatifs pour le
+		      <a href="https://www.service-public.gouv.fr/particuliers/vosdroits/F8" target="_blank" rel="noopener noreferrer">crédit d'impôt (garde d'enfants)</a>.
+	    </div>
+	    <div id="pdfDropzone" class="dropzone" role="button" tabindex="0">
+		      Déposez une facture PDF ici (ou cliquez pour choisir un fichier)
+	    </div>
+	    <input id="pdfFileInput" type="file" accept="application/pdf" multiple style="display:none" />
+	    <div id="pdfStatus" class="status"></div>
+
+	    <div class="reminder-text" style="margin-top:10px; margin-bottom:8px; color:#666">
+		      Avertissement : ces exports sont fournis à titre informatif. Vérifiez vous-même les montants et conditions avant toute déclaration fiscale.
+	    </div>
+
+	    <div class="pdf-actions">
+		      <button id="downloadMergedCsv" class="secondary-button" disabled>Télécharger CSV fusionné</button>
+	    </div>
+
+	    <div id="pdfResultsList" class="pdf-results"></div>
+	  </div>
+
+  <script src="vendor/pdfjs/pdf.min.js"></script>
   <script src="popup.js"></script>
 </body>
 </html> 
