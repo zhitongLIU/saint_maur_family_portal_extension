@@ -1,9 +1,10 @@
-const GOOGLE_CALENDAR_NAME = 'Saint-Maur Périscolaire';
+const GOOGLE_CALENDAR_BASE_NAME = 'Saint-Maur Périscolaire';
 const GOOGLE_SYNC_DEBUG_DETAILS = false;
 const GOOGLE_SYNC_CODE_VERSION = 'google-sync-id-base32hex-2026-05-31';
 const STORAGE_KEYS = {
-  calendarId: 'googleCalendarId'
+  calendarIdsByName: 'googleCalendarIdsByName'
 };
+const GOOGLE_BATCH_LIMIT = 1000;
 
 function getLocalTimeZone() {
   try {
@@ -136,9 +137,154 @@ async function googleApiRequestWithAuthRetry(path, opts, auth, { interactive = t
   return res;
 }
 
-async function getOrCreateDedicatedCalendarId(auth) {
-  const stored = await chrome.storage.local.get([STORAGE_KEYS.calendarId]);
-  const storedId = stored?.[STORAGE_KEYS.calendarId];
+function splitHttpMessage(message) {
+  const normalized = String(message || '').replace(/\r\n/g, '\n');
+  const idx = normalized.indexOf('\n\n');
+  if (idx === -1) return { head: normalized, body: '' };
+  return {
+    head: normalized.slice(0, idx),
+    body: normalized.slice(idx + 2)
+  };
+}
+
+function readHeader(headersText, headerName) {
+  const target = String(headerName || '').toLowerCase();
+  for (const line of String(headersText || '').split(/\n/)) {
+    const idx = line.indexOf(':');
+    if (idx === -1) continue;
+    if (line.slice(0, idx).trim().toLowerCase() === target) {
+      return line.slice(idx + 1).trim();
+    }
+  }
+  return '';
+}
+
+function parseBatchResponse(text, contentType, requests) {
+  const boundaryMatch = String(contentType || '').match(/boundary="?([^";]+)"?/i);
+  if (!boundaryMatch) {
+    return requests.map((request) => ({
+      ok: false,
+      status: 0,
+      json: null,
+      text,
+      path: request.path
+    }));
+  }
+
+  const boundary = boundaryMatch[1];
+  const results = [];
+  String(text || '')
+    .split(`--${boundary}`)
+    .map((part) => part.trim())
+    .filter((part) => part && part !== '--')
+    .forEach((part, index) => {
+      const { head: partHead, body: httpMessage } = splitHttpMessage(part);
+      const { head: responseHead, body } = splitHttpMessage(httpMessage);
+      const statusMatch = responseHead.match(/^HTTP\/\d(?:\.\d)?\s+(\d+)/i);
+      const status = statusMatch ? parseInt(statusMatch[1], 10) : 0;
+      const contentId = readHeader(partHead, 'Content-ID');
+      const contentIdMatch = contentId.match(/(?:response-)?(\d+)/i);
+      const requestIndex = contentIdMatch ? parseInt(contentIdMatch[1], 10) - 1 : index;
+      let json = null;
+      try { json = body ? JSON.parse(body) : null; } catch { json = null; }
+      results[requestIndex] = {
+        ok: status >= 200 && status < 300,
+        status,
+        json,
+        text: body,
+        path: requests[requestIndex]?.path || ''
+      };
+    });
+  return results;
+}
+
+function buildBatchBody(requests, boundary) {
+  return requests.map((request, index) => {
+    const lines = [
+      `--${boundary}`,
+      'Content-Type: application/http',
+      `Content-ID: ${index + 1}`,
+      '',
+      `${request.method || 'GET'} ${request.path} HTTP/1.1`
+    ];
+
+    if (request.body) {
+      lines.push('Content-Type: application/json; charset=UTF-8');
+    }
+
+    lines.push('');
+    if (request.body) lines.push(JSON.stringify(request.body));
+    return lines.join('\r\n');
+  }).concat(`--${boundary}--`).join('\r\n');
+}
+
+async function googleBatchRequest(requests, auth, { interactive = true } = {}) {
+  if (!requests.length) return [];
+
+  const boundary = `batch_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const url = 'https://www.googleapis.com/batch/calendar/v3';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${auth.token}`,
+      'Content-Type': `multipart/mixed; boundary=${boundary}`
+    },
+    body: buildBatchBody(requests, boundary)
+  });
+
+  const text = await res.text();
+  if ((res.status === 401 || res.status === 403) && interactive) {
+    await removeCachedAuthToken(auth.token);
+    auth.token = await getAuthTokenInteractive();
+    return googleBatchRequest(requests, auth, { interactive: false });
+  }
+
+  if (!res.ok) {
+    return requests.map((request) => ({
+      ok: false,
+      status: res.status,
+      json: null,
+      text,
+      path: request.path
+    }));
+  }
+
+  const parsed = parseBatchResponse(text, res.headers.get('Content-Type'), requests);
+  return requests.map((request, index) => parsed[index] || {
+    ok: false,
+    status: 0,
+    json: null,
+    text: 'Missing batch response part.',
+    path: request.path
+  });
+}
+
+async function googleBatchRequestAll(requests, auth) {
+  const results = [];
+  for (let i = 0; i < requests.length; i += GOOGLE_BATCH_LIMIT) {
+    const chunk = requests.slice(i, i + GOOGLE_BATCH_LIMIT);
+    results.push(...await googleBatchRequest(chunk, auth));
+  }
+  return results;
+}
+
+function calendarEventPath(calendarId, eventId) {
+  return `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
+}
+
+function calendarEventsPath(calendarId) {
+  return `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
+}
+
+function buildChildCalendarName(child) {
+  const childName = String(child?.name || '').trim();
+  return childName ? `${childName} - ${GOOGLE_CALENDAR_BASE_NAME}` : GOOGLE_CALENDAR_BASE_NAME;
+}
+
+async function getOrCreateDedicatedCalendarId(auth, calendarName) {
+  const stored = await chrome.storage.local.get([STORAGE_KEYS.calendarIdsByName]);
+  const storedIdsByName = stored?.[STORAGE_KEYS.calendarIdsByName] || {};
+  const storedId = storedIdsByName[calendarName];
   if (storedId) {
     // Validate it still exists and is accessible.
     const check = await googleApiRequestWithAuthRetry(`/calendar/v3/calendars/${encodeURIComponent(storedId)}`, {}, auth);
@@ -152,9 +298,11 @@ async function getOrCreateDedicatedCalendarId(auth) {
     const listRes = await googleApiRequestWithAuthRetry(`/calendar/v3/users/me/calendarList${query}`, {}, auth);
     if (!listRes.ok) break;
     const items = listRes.json?.items || [];
-    const match = items.find((c) => c?.summary === GOOGLE_CALENDAR_NAME);
+    const match = items.find((c) => c?.summary === calendarName);
     if (match?.id) {
-      await chrome.storage.local.set({ [STORAGE_KEYS.calendarId]: match.id });
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.calendarIdsByName]: { ...storedIdsByName, [calendarName]: match.id }
+      });
       return match.id;
     }
     pageToken = listRes.json?.nextPageToken;
@@ -164,7 +312,7 @@ async function getOrCreateDedicatedCalendarId(auth) {
   const tz = getLocalTimeZone();
   const createRes = await googleApiRequestWithAuthRetry(`/calendar/v3/calendars`, {
     method: 'POST',
-    body: { summary: GOOGLE_CALENDAR_NAME, timeZone: tz }
+    body: { summary: calendarName, timeZone: tz }
   }, auth);
   if (!createRes.ok) {
     throw new Error(createRes.json?.error?.message || 'Failed to create Google calendar.');
@@ -183,7 +331,9 @@ async function getOrCreateDedicatedCalendarId(auth) {
     // no-op
   }
 
-  await chrome.storage.local.set({ [STORAGE_KEYS.calendarId]: calendarId });
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.calendarIdsByName]: { ...storedIdsByName, [calendarName]: calendarId }
+  });
   return calendarId;
 }
 
@@ -192,49 +342,117 @@ function buildReservationStableKey(event) {
   return `${event?.ID_INSCRIPTION}-${event?.ID_EVENT}-${whenKey}`;
 }
 
-async function upsertEvent(calendarId, token, eventId, eventBody) {
-  if (!isValidGoogleEventId(eventId)) {
-    throw new Error(`Generated invalid Google Calendar event id before API call: ${eventId}`);
-  }
-
-  const auth = { token };
-  const eventPath = `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
-
-  // Google Calendar API does not create new events via PUT /events/{eventId}.
-  // Create must be done via POST /events (optionally with body.id), while updates use PUT /events/{eventId}.
-  const getRes = await googleApiRequestWithAuthRetry(eventPath, {}, auth);
-  if (getRes.ok) {
-    const putRes = await googleApiRequestWithAuthRetry(
-      eventPath,
-      { method: 'PUT', body: { ...eventBody, id: eventId } },
-      auth
-    );
-    return { res: putRes, token: auth.token, op: 'update' };
-  }
-
-  if (getRes.status === 404) {
-    const postRes = await googleApiRequestWithAuthRetry(
-      `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
-      { method: 'POST', body: { ...eventBody, id: eventId } },
-      auth
-    );
-    return { res: postRes, token: auth.token, op: 'create' };
-  }
-
-  // If GET failed for another reason, bubble it up for better error context.
-  return { res: getRes, token: auth.token, op: 'get_failed' };
+function uniqueEventOps(ops) {
+  const byId = new Map();
+  for (const op of ops) byId.set(op.eventId, op);
+  return [...byId.values()];
 }
 
-async function deleteEventIfExists(calendarId, token, eventId) {
-  const auth = { token };
-  const res = await googleApiRequestWithAuthRetry(
-    `/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
-    { method: 'DELETE' },
-    auth
-  );
-  if (res.ok) return { deleted: true, token: auth.token };
-  if (res.status === 404) return { deleted: false, token: auth.token };
-  return { deleted: false, token: auth.token, error: res.json?.error?.message || res.text || 'Delete failed' };
+function formatGoogleBatchError(action, result, calendarId, op, operation) {
+  const msg = result.json?.error?.message || result.text || `Failed to ${action}.`;
+  return [
+    `Google API error while ${action}`,
+    `status=${result.status}`,
+    `path=${result.path || 'unknown'}`,
+    `calendarId=${calendarId}`,
+    `eventId=${op.eventId}`,
+    `label=${op.label || 'unknown'}`,
+    `op=${operation || 'unknown'}`,
+    `message=${msg}`
+  ].join(' | ');
+}
+
+async function batchDeleteEventsIfExists(calendarId, auth, ops, report, stage) {
+  const uniqueOps = uniqueEventOps(ops);
+  if (!uniqueOps.length) return 0;
+
+  report(stage, `Deleting ${uniqueOps.length} obsolete event(s)…`);
+  const requests = uniqueOps.map((op) => ({
+    method: 'DELETE',
+    path: calendarEventPath(calendarId, op.eventId)
+  }));
+  const results = await googleBatchRequestAll(requests, auth);
+
+  let deleted = 0;
+  results.forEach((result, index) => {
+    const op = uniqueOps[index];
+    if (result.ok) {
+      deleted += 1;
+      return;
+    }
+    if (result.status === 404) return;
+
+    const debug = formatGoogleBatchError('deleting event', result, calendarId, op, 'delete');
+    report('error', debug);
+    throw new Error(debug);
+  });
+
+  return deleted;
+}
+
+async function batchUpsertEvents(calendarId, auth, ops, report, stage) {
+  const uniqueOps = uniqueEventOps(ops);
+  if (!uniqueOps.length) return { created: 0, updated: 0 };
+
+  for (const op of uniqueOps) {
+    if (!isValidGoogleEventId(op.eventId)) {
+      throw new Error(`Generated invalid Google Calendar event id before API call: ${op.eventId}`);
+    }
+  }
+
+  report(stage, `Checking ${uniqueOps.length} event(s) before upsert…`);
+  const getRequests = uniqueOps.map((op) => ({
+    method: 'GET',
+    path: calendarEventPath(calendarId, op.eventId)
+  }));
+  const getResults = await googleBatchRequestAll(getRequests, auth);
+
+  const applyRequests = [];
+  const applyOps = [];
+  getResults.forEach((result, index) => {
+    const op = uniqueOps[index];
+    if (result.ok) {
+      applyRequests.push({
+        method: 'PUT',
+        path: calendarEventPath(calendarId, op.eventId),
+        body: { ...op.body, id: op.eventId }
+      });
+      applyOps.push({ ...op, operation: 'update' });
+      return;
+    }
+
+    if (result.status === 404) {
+      applyRequests.push({
+        method: 'POST',
+        path: calendarEventsPath(calendarId),
+        body: { ...op.body, id: op.eventId }
+      });
+      applyOps.push({ ...op, operation: 'create' });
+      return;
+    }
+
+    const debug = formatGoogleBatchError('checking event', result, calendarId, op, 'get');
+    report('error', debug);
+    throw new Error(debug);
+  });
+
+  report(stage, `Applying ${applyRequests.length} event upsert(s)…`);
+  const applyResults = await googleBatchRequestAll(applyRequests, auth);
+
+  let created = 0;
+  let updated = 0;
+  applyResults.forEach((result, index) => {
+    const op = applyOps[index];
+    if (!result.ok) {
+      const debug = formatGoogleBatchError('upserting event', result, calendarId, op, op.operation);
+      report('error', debug);
+      throw new Error(debug);
+    }
+    if (op.operation === 'create') created += 1;
+    else updated += 1;
+  });
+
+  return { created, updated };
 }
 
 function parseRangeYears(fromDate, toDate) {
@@ -243,6 +461,39 @@ function parseRangeYears(fromDate, toDate) {
   const toYear = parseInt(String(toDate || '').split('/')[2] || '', 10);
   if (!fromYear || !toYear) return { fromYear: null, toYear: null };
   return { fromYear, toYear };
+}
+
+async function preparePaymentReminderOps(upsertOps, deleteOps, { reminderDay, fromYear, toYear }) {
+  if (!fromYear || !toYear) return;
+
+  for (let year = fromYear; year <= toYear; year++) {
+    for (let month = 1; month <= 12; month++) {
+      const monthStr = String(month).padStart(2, '0');
+      const reminderKey = `SCHOOLFEE-${year}${monthStr}`;
+      const reminderId = await buildGoogleEventId('smdfreminder', reminderKey);
+
+      if (!reminderDay) {
+        deleteOps.push({ eventId: reminderId, label: `payment reminder ${year}-${monthStr}` });
+        continue;
+      }
+
+      const day = Math.min(Math.max(parseInt(reminderDay, 10) || 1, 1), 28);
+      const startDate = `${year}-${monthStr}-${String(day).padStart(2, '0')}`;
+      const endDate = addDaysYmd(year, month, day, 1);
+
+      const body = {
+        summary: 'Paiement Frais Scolaires',
+        description: [
+          'Rappel de paiement frais scolaires',
+          'Generated by extension: saint_maur_family_portal_extension'
+        ].join('\n'),
+        start: { date: startDate },
+        end: { date: endDate }
+      };
+
+      upsertOps.push({ eventId: reminderId, body, label: `payment reminder ${year}-${monthStr}` });
+    }
+  }
 }
 
 export async function syncReservationsToGoogleCalendar(childrenWithEvents, { fromDate, toDate }, onProgress) {
@@ -260,21 +511,29 @@ export async function syncReservationsToGoogleCalendar(childrenWithEvents, { fro
   report('auth', 'Authorizing with Google…');
   const auth = { token: await getAuthTokenInteractive() };
 
-  report('calendar', `Ensuring calendar "${GOOGLE_CALENDAR_NAME}" exists…`);
-  const calendarId = await getOrCreateDedicatedCalendarId(auth);
-  report('calendar', `Using calendarId: ${calendarId}`);
   const tz = getLocalTimeZone();
+  const { reminderDay } = await chrome.storage.local.get(['reminderDay']);
+  const { fromYear, toYear } = parseRangeYears(fromDate, toDate);
 
   let created = 0;
   let updated = 0;
   let deleted = 0;
+  const calendarIds = {};
 
-  report('events', 'Syncing reservation events…');
   for (const entry of childrenWithEvents) {
     const child = entry.child;
     const events = entry.events || [];
+    const calendarName = buildChildCalendarName(child);
 
-    if (child?.name) report('events', `Syncing events for ${child.name}…`);
+    report('calendar', `Ensuring calendar "${calendarName}" exists…`);
+    const calendarId = await getOrCreateDedicatedCalendarId(auth, calendarName);
+    calendarIds[calendarName] = calendarId;
+    report('calendar', `Using calendar "${calendarName}"…`);
+
+    const upsertOps = [];
+    const deleteOps = [];
+
+    report('events', `Preparing events for ${child?.name || calendarName}…`);
     for (const ev of events) {
       const stableKey = buildReservationStableKey(ev);
       const eventId = await buildGoogleEventId('smdf', stableKey);
@@ -282,10 +541,7 @@ export async function syncReservationsToGoogleCalendar(childrenWithEvents, { fro
       const dayPrefix = `[${toPortalDayLabel(start)}]`;
 
       if (ev?.IS_SELECTED === 0) {
-        report('events', `${dayPrefix} Removing cancelled reservation…`);
-        const delRes = await deleteEventIfExists(calendarId, auth.token, eventId);
-        auth.token = delRes.token;
-        if (delRes.deleted) deleted += 1;
+        deleteOps.push({ eventId, label: `${dayPrefix} cancelled reservation` });
         continue;
       }
 
@@ -307,74 +563,18 @@ export async function syncReservationsToGoogleCalendar(childrenWithEvents, { fro
         end: { dateTime: toRfc3339Local(end), timeZone: tz }
       };
 
-      report('events', `${dayPrefix} Upserting: ${summary}`);
-      const up = await upsertEvent(calendarId, auth.token, eventId, body);
-      auth.token = up.token;
-      if (!up.res.ok) {
-        const msg = up.res.json?.error?.message || up.res.text || 'Failed to upsert event.';
-        const debug = [
-          `Google API error while upserting event`,
-          `status=${up.res.status}`,
-          `url=${up.res.url || 'unknown'}`,
-          `calendarId=${calendarId}`,
-          `eventId=${eventId}`,
-          `op=${up.op || 'unknown'}`,
-          `message=${msg}`
-        ].join(' | ');
-        report('error', debug);
-        throw new Error(debug);
-      }
-      if (up.op === 'create') created += 1;
-      else updated += 1;
+      upsertOps.push({ eventId, body, label: `${dayPrefix} ${summary}` });
     }
-  }
 
-  const { reminderDay } = await chrome.storage.local.get(['reminderDay']);
-  const { fromYear, toYear } = parseRangeYears(fromDate, toDate);
-  if (fromYear && toYear) {
-    report('reminders', 'Syncing payment reminders…');
-    for (let year = fromYear; year <= toYear; year++) {
-      for (let month = 1; month <= 12; month++) {
-        const monthStr = String(month).padStart(2, '0');
-        const reminderKey = `SCHOOLFEE-${year}${monthStr}`;
-        const reminderId = await buildGoogleEventId('smdfreminder', reminderKey);
+    report('reminders', `Preparing payment reminders for ${child?.name || calendarName}…`);
+    await preparePaymentReminderOps(upsertOps, deleteOps, { reminderDay, fromYear, toYear });
 
-        if (!reminderDay) {
-          const delRes = await deleteEventIfExists(calendarId, auth.token, reminderId);
-          auth.token = delRes.token;
-          if (delRes.deleted) deleted += 1;
-          continue;
-        }
-
-        const day = Math.min(Math.max(parseInt(reminderDay, 10) || 1, 1), 28);
-        const startDate = `${year}-${monthStr}-${String(day).padStart(2, '0')}`;
-        const endDate = addDaysYmd(year, month, day, 1);
-
-        const body = {
-          summary: 'Paiement Frais Scolaires',
-          description: [
-            'Rappel de paiement frais scolaires',
-            'Generated by extension: saint_maur_family_portal_extension'
-          ].join('\n'),
-          start: { date: startDate },
-          end: { date: endDate }
-        };
-
-        report('reminders', `Upserting reminder ${year}-${monthStr}`);
-        const up = await upsertEvent(calendarId, auth.token, reminderId, body);
-        auth.token = up.token;
-        if (!up.res.ok) {
-          const msg = up.res.json?.error?.message || up.res.text || 'Failed to upsert reminder.';
-          const debug = `Google API error while upserting reminder | status=${up.res.status} | url=${up.res.url || 'unknown'} | calendarId=${calendarId} | eventId=${reminderId} | op=${up.op || 'unknown'} | message=${msg}`;
-          report('error', debug);
-          throw new Error(debug);
-        }
-        if (up.op === 'create') created += 1;
-        else updated += 1;
-      }
-    }
+    deleted += await batchDeleteEventsIfExists(calendarId, auth, deleteOps, report, 'events');
+    const upserted = await batchUpsertEvents(calendarId, auth, upsertOps, report, 'events');
+    created += upserted.created;
+    updated += upserted.updated;
   }
 
   report('done', 'Sync finished.');
-  return { calendarId, created, updated, deleted };
+  return { calendarIds, created, updated, deleted };
 }
