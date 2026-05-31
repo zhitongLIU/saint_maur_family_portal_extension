@@ -140,6 +140,28 @@ function getPdfResultsListEl() {
   return document.getElementById('pdfResultsList');
 }
 
+function createHelpIcon(helpText) {
+  const helpIcon = document.createElement('span');
+  helpIcon.className = 'help-icon';
+  helpIcon.tabIndex = 0;
+  helpIcon.setAttribute('aria-label', `Aide : ${helpText}`);
+  helpIcon.textContent = '?';
+
+  const tooltip = document.createElement('span');
+  tooltip.className = 'help-tooltip';
+  tooltip.textContent = helpText;
+  helpIcon.appendChild(tooltip);
+
+  return helpIcon;
+}
+
+function createPdfAction(button) {
+  const wrap = document.createElement('div');
+  wrap.className = 'pdf-action-help';
+  wrap.appendChild(button);
+  return wrap;
+}
+
 function updateMergeButtonState() {
   const mergeBtn = document.getElementById('downloadMergedCsv');
   if (!mergeBtn) return;
@@ -197,7 +219,7 @@ function renderPdfExports() {
       downloadBtn.className = 'tiny-button';
       downloadBtn.textContent = 'Download';
       downloadBtn.addEventListener('click', () => downloadSingleExport(exp.id));
-      actionsEl.appendChild(downloadBtn);
+      actionsEl.appendChild(createPdfAction(downloadBtn));
     }
 
     if (exp.status !== 'parsing') {
@@ -205,7 +227,7 @@ function renderPdfExports() {
       removeBtn.className = 'tiny-button danger';
       removeBtn.textContent = 'Remove';
       removeBtn.addEventListener('click', () => removeExport(exp.id));
-      actionsEl.appendChild(removeBtn);
+      actionsEl.appendChild(createPdfAction(removeBtn));
     }
 
     itemEl.appendChild(leftEl);

@@ -104,6 +104,69 @@
       color: #D8000C;
     }
 
+    .button-help-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 15px;
+    }
+
+    .button-help-row button {
+      flex: 1;
+      min-width: 0;
+      margin-top: 0;
+    }
+
+    .button-help-row.compact {
+      margin-top: 8px;
+    }
+
+    .help-icon {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border: 1px solid #888;
+      border-radius: 50%;
+      color: #555;
+      background: #fff;
+      font-size: 12px;
+      font-weight: bold;
+      line-height: 1;
+      cursor: help;
+      flex-shrink: 0;
+    }
+
+    .help-icon:focus {
+      outline: 2px solid #2d6cdf;
+      outline-offset: 2px;
+    }
+
+    .help-tooltip {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 10;
+      display: none;
+      width: 220px;
+      padding: 8px;
+      border-radius: 6px;
+      background: #333;
+      color: #fff;
+      font-size: 12px;
+      font-weight: normal;
+      line-height: 1.35;
+      text-align: left;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .help-icon:hover .help-tooltip,
+    .help-icon:focus .help-tooltip {
+      display: block;
+    }
+
     .pdf-actions {
       display: flex;
       gap: 8px;
@@ -179,8 +242,26 @@
       flex-shrink: 0;
     }
 
+    .pdf-action-help {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .pdf-action-help .help-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 11px;
+    }
+
+    .pdf-action-help .help-tooltip {
+      width: 190px;
+    }
+
     .tiny-button {
+      width: auto;
       padding: 6px 8px;
+      margin-top: 0;
       border-radius: 6px;
       border: none;
       cursor: pointer;
@@ -279,8 +360,20 @@
     </div>
   </div>
 
-  <button id="saveEvents">Download .ics</button>
-  <button id="syncGoogleCalendar" class="secondary-button" style="margin-top: 8px">Sync to Google Calendar</button>
+  <div class="button-help-row">
+    <button id="saveEvents">Download .ics</button>
+    <span class="help-icon" tabindex="0" aria-label="Aide : télécharge les événements du calendrier pour la période sélectionnée au format ICS">
+      ?
+      <span class="help-tooltip">Télécharge les événements du calendrier pour la période sélectionnée au format .ics pour les importer dans votre calendrier préféré.</span>
+    </span>
+  </div>
+  <div class="button-help-row compact">
+    <button id="syncGoogleCalendar" class="secondary-button">Sync to Google Calendar</button>
+    <span class="help-icon" tabindex="0" aria-label="Aide : envoie les réservations sélectionnées directement vers Google Calendar après autorisation">
+      ?
+      <span class="help-tooltip">Envoie les réservations sélectionnées directement vers Google Calendar après autorisation.</span>
+    </span>
+  </div>
   <div id="syncStatus" class="status" style="margin-top:8px"></div>
   <pre id="syncDebug" class="status" style="margin-top:6px; white-space:pre-wrap; max-height:110px; overflow:auto; display:none"></pre>
 
@@ -301,7 +394,13 @@
 	    </div>
 
 	    <div class="pdf-actions">
+        <div class="button-help-row compact" style="margin-top:0; width:100%">
 		      <button id="downloadMergedCsv" class="secondary-button" disabled>Télécharger CSV fusionné</button>
+          <span class="help-icon" tabindex="0" aria-label="Aide : télécharge un CSV unique regroupant toutes les factures PDF analysées avec succès">
+            ?
+            <span class="help-tooltip">Télécharge un CSV unique regroupant toutes les factures PDF analysées avec succès.</span>
+          </span>
+        </div>
 	    </div>
 
 	    <div id="pdfResultsList" class="pdf-results"></div>
