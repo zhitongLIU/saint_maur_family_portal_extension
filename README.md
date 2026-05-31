@@ -41,6 +41,31 @@ Cette extension est fait en reverse engineering de l'API du Portail Famille de S
     ![usage_3](screenshots/usage_3.png)
     c. Et Voila!
 
+## Sync Google Calendar (sans fichier ICS)
+
+L'extension peut aussi **synchroniser directement** les événements vers Google Calendar (bouton **"Sync to Google Calendar"**),
+ce qui évite de télécharger/importer manuellement un fichier `.ics`.
+
+### Configuration OAuth (une seule fois)
+
+Google Calendar nécessite une autorisation OAuth.
+
+1. Installez l'extension en "Load unpacked", puis récupérez son **Extension ID** dans `chrome://extensions/`.
+2. Dans Google Cloud Console :
+   - Créez (ou utilisez) un projet.
+   - Configurez l'**OAuth consent screen** (mode Testing suffit).
+   - Créez un client OAuth de type **Chrome Extension** en indiquant l'Extension ID.
+   - Ajoutez le scope Calendar : `https://www.googleapis.com/auth/calendar`.
+   - Si l'app est en Testing, ajoutez votre compte Google dans "Test users".
+3. Dans `manifest.json`, remplacez :
+   - `oauth2.client_id`: `REPLACE_WITH_YOUR_GOOGLE_OAUTH_CLIENT_ID`
+4. Rechargez l'extension dans `chrome://extensions/`.
+
+### Comportement de sync
+
+- Les événements sont écrits dans un calendrier dédié **"Saint-Maur Périscolaire"** (créé automatiquement).
+- La sync est **idempotente** : relancer la sync ne crée pas de doublons (update/delete selon les changements).
+
 ## Export facture PDF → CSV
 
 Dans la popup de l'extension, vous pouvez aussi déposer une **facture PDF** (1ère page) dans la zone "Facture PDF → CSV".
@@ -77,6 +102,9 @@ Cette extension :
 - Ne stocke aucune donnée personnelle
 - Traite toutes les données localement
 - Ne transmet aucune donnée à des tiers
+
+⚠️ Exception : si vous utilisez la fonctionnalité **Sync to Google Calendar**, les événements (titre/horaires/description)
+sont envoyés à **Google Calendar** via l'API Google, uniquement à votre demande (clic utilisateur).
 
 ## Support
 

@@ -1,8 +1,17 @@
 // Global variables
 const BUTTON_TEXT = {
-  default: 'Download',
+  default: 'Download .ics',
   loading: 'Loading...'
 };
+
+const SYNC_BUTTON_TEXT = {
+  default: 'Sync to Google Calendar',
+  loading: 'Syncing...'
+};
+
+const SYNC_DEBUG_DETAILS = false;
+
+let syncWatchdogTimer = null;
 
 const CSV_HEADER = 'month;category;description;quantity;tarif;montant';
 
@@ -53,16 +62,67 @@ function getLastDayOfMonth(year, month) {
 // Check if we're on the correct page and update UI accordingly
 function updateUIBasedOnURL(url) {
   const saveButton = document.getElementById('saveEvents');
+  const syncButton = document.getElementById('syncGoogleCalendar');
   const warningMessage = document.getElementById('warningMessage');
   
   if (!url || !url.includes('portalssl.agoraplus.fr')) {
     saveButton.disabled = true;
+    if (syncButton) syncButton.disabled = true;
     warningMessage.innerHTML = 'Merci de vous connecter sur le <a href="https://portalssl.agoraplus.fr/smdf/pck_home.home_view#/" target="_blank" rel="noopener noreferrer">portail famille</a>';
     warningMessage.style.display = 'block';
   } else {
     saveButton.disabled = false;
+    if (syncButton) syncButton.disabled = false;
     warningMessage.style.display = 'none';
   }
+}
+
+function setSyncStatus(text, { isError = false } = {}) {
+  const statusEl = document.getElementById('syncStatus');
+  if (!statusEl) return;
+  statusEl.textContent = text || '';
+  statusEl.classList.toggle('error', !!isError);
+}
+
+function appendSyncDebug(line) {
+  if (!SYNC_DEBUG_DETAILS) return;
+  const el = document.getElementById('syncDebug');
+  if (!el) return;
+  const msg = String(line || '').trim();
+  if (!msg) return;
+  el.style.display = 'block';
+  el.textContent = el.textContent ? `${el.textContent}\n${msg}` : msg;
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearSyncDebug() {
+  const el = document.getElementById('syncDebug');
+  if (!el) return;
+  el.textContent = '';
+  el.style.display = 'none';
+}
+
+function startSyncWatchdog() {
+  stopSyncWatchdog();
+  syncWatchdogTimer = setTimeout(() => {
+    const syncButton = document.getElementById('syncGoogleCalendar');
+    const saveButton = document.getElementById('saveEvents');
+    if (syncButton) {
+      syncButton.disabled = false;
+      syncButton.textContent = SYNC_BUTTON_TEXT.default;
+    }
+    if (saveButton) {
+      saveButton.disabled = false;
+      saveButton.textContent = BUTTON_TEXT.default;
+    }
+    setSyncStatus('Sync timed out. Check Service Worker logs in chrome://extensions → Service worker.', { isError: true });
+    appendSyncDebug(`[watchdog] timeout after 120s`);
+  }, 120000);
+}
+
+function stopSyncWatchdog() {
+  if (syncWatchdogTimer) clearTimeout(syncWatchdogTimer);
+  syncWatchdogTimer = null;
 }
 
 function setPdfStatus(text, { isError = false } = {}) {
@@ -556,6 +616,9 @@ document.getElementById('saveEvents').addEventListener('click', () => {
   const saveButton = document.getElementById('saveEvents');
   saveButton.disabled = true;
   saveButton.textContent = BUTTON_TEXT.loading;
+  const syncButton = document.getElementById('syncGoogleCalendar');
+  if (syncButton) syncButton.disabled = true;
+  setSyncStatus('');
 
   const fromMonth = document.getElementById('fromMonth').value;
   const fromYear = document.getElementById('fromYear').value;
@@ -578,6 +641,7 @@ document.getElementById('saveEvents').addEventListener('click', () => {
       console.error("No active tab found.");
       saveButton.disabled = false;
       saveButton.textContent = BUTTON_TEXT.default;
+      if (syncButton) syncButton.disabled = false;
       return;
     }
 
@@ -602,12 +666,115 @@ document.getElementById('saveEvents').addEventListener('click', () => {
           console.error("Failed to retrieve session ID.");
           saveButton.disabled = false;
           saveButton.textContent = BUTTON_TEXT.default;
+          if (syncButton) syncButton.disabled = false;
         }
       });
     } else {
       console.error("The active tab is not the correct page.");
       saveButton.disabled = false;
       saveButton.textContent = BUTTON_TEXT.default;
+      if (syncButton) syncButton.disabled = false;
+    }
+  });
+});
+
+document.getElementById('syncGoogleCalendar')?.addEventListener('click', () => {
+  const saveButton = document.getElementById('saveEvents');
+  const syncButton = document.getElementById('syncGoogleCalendar');
+  if (!syncButton) return;
+
+  syncButton.disabled = true;
+  syncButton.textContent = SYNC_BUTTON_TEXT.loading;
+  if (saveButton) saveButton.disabled = true;
+  setSyncStatus('Authorizing with Google…');
+  if (SYNC_DEBUG_DETAILS) console.log('[SMDF] Sync: started');
+  clearSyncDebug();
+  appendSyncDebug(`[popup] sync clicked`);
+  appendSyncDebug(`[popup] Authorizing with Google…`);
+  startSyncWatchdog();
+
+  const fromMonth = document.getElementById('fromMonth').value;
+  const fromYear = document.getElementById('fromYear').value;
+  const toMonth = document.getElementById('toMonth').value;
+  const toYear = document.getElementById('toYear').value;
+  const reminderDay = document.getElementById('reminderDay').value;
+
+  const fromDate = `01/${fromMonth}/${fromYear}`;
+  const lastDay = getLastDayOfMonth(toYear, toMonth);
+  const toDate = `${lastDay}/${toMonth}/${toYear}`;
+
+  chrome.storage.local.set({
+    reminderDay: reminderDay ? parseInt(reminderDay) : null
+  });
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs.length === 0) {
+      console.error("No active tab found.");
+      syncButton.disabled = false;
+      syncButton.textContent = SYNC_BUTTON_TEXT.default;
+      if (saveButton) saveButton.disabled = false;
+      setSyncStatus('No active tab found.', { isError: true });
+      return;
+    }
+
+    const activeTab = tabs[0];
+    updateUIBasedOnURL(activeTab.url);
+
+    if (activeTab.url && activeTab.url.includes("portalssl.agoraplus.fr")) {
+      chrome.scripting.executeScript({
+        target: { tabId: activeTab.id },
+        function: getSessionIdFromTab
+      }, (results) => {
+        if (results && results[0] && results[0].result) {
+          const sessionId = results[0].result;
+          chrome.storage.local.set({
+            sessionId: sessionId.replaceAll("\"", ""),
+            fromDate: fromDate,
+            toDate: toDate
+          }, () => {
+            setSyncStatus('Syncing events to Google Calendar…');
+            if (SYNC_DEBUG_DETAILS) console.log('[SMDF] Sync: calling background');
+            appendSyncDebug(`[popup] Syncing events to Google Calendar…`);
+            appendSyncDebug(`[popup] Sending message: action=syncReservationsToGoogle`);
+            chrome.runtime.sendMessage({ action: 'syncReservationsToGoogle' }, (resp) => {
+              const err = chrome.runtime.lastError;
+              if (err) {
+                appendSyncDebug(`[popup] sendMessage ERROR: ${err.message}`);
+                setSyncStatus(err.message, { isError: true });
+                stopSyncWatchdog();
+                const sb = document.getElementById('saveEvents');
+                const gb = document.getElementById('syncGoogleCalendar');
+                if (gb) {
+                  gb.disabled = false;
+                  gb.textContent = SYNC_BUTTON_TEXT.default;
+                }
+                if (sb) {
+                  sb.disabled = false;
+                  sb.textContent = BUTTON_TEXT.default;
+                }
+                return;
+              }
+              appendSyncDebug(`[popup] sendMessage response: ${JSON.stringify(resp || {})}`);
+            });
+          });
+        } else {
+          console.error("Failed to retrieve session ID.");
+          syncButton.disabled = false;
+          syncButton.textContent = SYNC_BUTTON_TEXT.default;
+          if (saveButton) saveButton.disabled = false;
+          setSyncStatus('Failed to retrieve portal session.', { isError: true });
+          appendSyncDebug(`[popup] ERROR: failed to retrieve portal session`);
+          stopSyncWatchdog();
+        }
+      });
+    } else {
+      console.error("The active tab is not the correct page.");
+      syncButton.disabled = false;
+      syncButton.textContent = SYNC_BUTTON_TEXT.default;
+      if (saveButton) saveButton.disabled = false;
+      setSyncStatus('Open the Portail Famille tab first.', { isError: true });
+      appendSyncDebug(`[popup] ERROR: active tab is not portalssl.agoraplus.fr`);
+      stopSyncWatchdog();
     }
   });
 });
@@ -618,6 +785,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const saveButton = document.getElementById('saveEvents');
     saveButton.disabled = false;
     saveButton.textContent = BUTTON_TEXT.default;
+    const syncButton = document.getElementById('syncGoogleCalendar');
+    if (syncButton) {
+      syncButton.disabled = false;
+      syncButton.textContent = SYNC_BUTTON_TEXT.default;
+    }
   }
   if (message.action === 'downloadCsvComplete') {
     setPdfStatus('Téléchargement CSV terminé.');
@@ -625,6 +797,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'downloadCsvError') {
     setPdfStatus('Erreur lors du téléchargement CSV.', { isError: true });
   }
+  if (message.action === 'syncProgress') {
+    const text = message.detail || message.stage || 'Syncing…';
+    if (SYNC_DEBUG_DETAILS) console.log('[SMDF] Sync progress:', message);
+    setSyncStatus(text);
+    appendSyncDebug(`[bg] ${text}`);
+  }
+  if (message.action === 'syncComplete' || message.action === 'syncError') {
+    const syncButton = document.getElementById('syncGoogleCalendar');
+    const saveButton = document.getElementById('saveEvents');
+    if (syncButton) {
+      syncButton.disabled = false;
+      syncButton.textContent = SYNC_BUTTON_TEXT.default;
+    }
+    if (saveButton) {
+      saveButton.disabled = false;
+      saveButton.textContent = BUTTON_TEXT.default;
+    }
+
+    if (message.action === 'syncComplete') {
+      setSyncStatus(`Sync complete: ${message.created ?? 0} created, ${message.updated ?? 0} updated, ${message.deleted ?? 0} deleted.`);
+      appendSyncDebug(`[bg] syncComplete created=${message.created ?? 0} updated=${message.updated ?? 0} deleted=${message.deleted ?? 0}`);
+    } else {
+      setSyncStatus(message.error || 'Sync failed.', { isError: true });
+      appendSyncDebug(`[bg] syncError: ${message.error || 'Sync failed.'}`);
+    }
+    stopSyncWatchdog();
+  }
+});
+
+// If the popup is opened while a sync is in flight, surface that hint.
+document.addEventListener('DOMContentLoaded', () => {
+  appendSyncDebug('[popup] Tip: Service Worker logs are under chrome://extensions → Service worker');
 });
 
 // Function to be executed in the tab context

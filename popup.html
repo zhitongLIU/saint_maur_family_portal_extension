@@ -52,7 +52,6 @@
     }
     .reminder-section {
       padding-top: 15px;
-      border-top: 1px solid #ccc;
     }
     
     .reminder-section label {
@@ -280,7 +279,10 @@
     </div>
   </div>
 
-  <button id="saveEvents">Download</button>
+  <button id="saveEvents">Download .ics</button>
+  <button id="syncGoogleCalendar" class="secondary-button" style="margin-top: 8px">Sync to Google Calendar</button>
+  <div id="syncStatus" class="status" style="margin-top:8px"></div>
+  <pre id="syncDebug" class="status" style="margin-top:6px; white-space:pre-wrap; max-height:110px; overflow:auto; display:none"></pre>
 
 	  <div class="invoice-section">
 		    <h4>Convertir facture en CSV</h4>

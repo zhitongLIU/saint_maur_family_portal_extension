@@ -22,7 +22,7 @@ async function fetchChildIds(sessionId) {
   }
 }
 
-async function fetchEvents(sessionId, targetId) {
+async function fetchEvents(sessionId, targetId, onProgress) {
   // Get the date range from storage
   const { fromDate, toDate } = await chrome.storage.local.get(['fromDate', 'toDate']);
   
@@ -46,6 +46,9 @@ async function fetchEvents(sessionId, targetId) {
     // Format dates for API call
     const monthStartDate = `${firstDay}/${month}/${year}`;
     const monthEndDate = `${lastDay}/${month}/${year}`;
+    if (typeof onProgress === 'function') {
+      onProgress({ monthStartDate, monthEndDate });
+    }
     
     try {
       const response = await fetch(
