@@ -252,8 +252,8 @@ function buildCsvFromRows(rows) {
       csvEscape(getCategoryFromDescription(row.description)),
       csvEscape(row.description),
       csvEscape(row.quantity),
-      csvEscape(row.tarif),
-      csvEscape(row.montant)
+      csvEscape(formatCsvDecimal(row.tarif)),
+      csvEscape(formatCsvDecimal(row.montant))
     ].join(';'));
   }
   return lines.join('\n') + '\n';
@@ -295,6 +295,10 @@ function csvEscape(value) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
+}
+
+function formatCsvDecimal(value) {
+  return normalizeSpaces(value).replace(',', '.');
 }
 
 function normalizeTokenText(str) {
