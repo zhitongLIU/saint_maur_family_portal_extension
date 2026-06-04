@@ -2,12 +2,12 @@ Simplifiez la gestion des réservations périscolaires, de la restauration scola
 
 Cette extension Chrome aide les familles à mieux suivre leurs réservations et leurs dépenses, directement depuis le portail AgoraPlus de Saint-Maur.
 
-Fonctionnalités principales :
+Il vous permet de :
 
-- Exporter les réservations périscolaires et de restauration au format calendrier ICS pour les importer le fichier ICS dans Google Calendar, Apple Calendar, Outlook ou tout autre calendrier compatible
-- Synchroniser directement les réservations vers Google Calendar dans un calendrier dédié “Saint-aur Périscolaire”, sans téléchargement manuel de fichier ICS 
+- Exporter les réservations périscolaires et de restauration au format calendrier ICS pour les importer dans Google Calendar, Apple Calendar, Outlook ou tout autre calendrier compatible
+- Synchroniser directement les réservations vers Google Calendar dans un calendrier dédié “Saint-Maur Périscolaire”, sans téléchargement manuel de fichier ICS 
 - Définir un rappel mensuel optionnel pour le paiement des frais scolaires
-- Analyser les factures PDF mensuelles du Portail Famille et extraire les lignes de facture en CSV : mois, catégorie, description, quantité, tarif et montant
+- Extraire les lignes de facture en CSV : mois, catégorie, description, quantité, tarif et montant
 - Télécharger un CSV par facture ou un CSV fusionné pour plusieurs factures
 
 Utilisation :
@@ -16,8 +16,7 @@ Utilisation :
 2. Ouvrez la popup de l’extension.
 3. Choisissez la période à exporter.
 4. Téléchargez un fichier ICS ou cliquez sur “Sync to Google Calendar”.
-5. Pour les factures, déposez un ou plusieurs PDF dans la zone “Facture PDF → CSV”.
-6. Téléchargez les CSV générés pour analyser vos dépenses.
+5. Déposez vos factures PDF dans la zone “Facture PDF → CSV” pour générer les fichiers CSV.
 
 Confidentialité :
 
