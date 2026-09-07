@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildGoogleEventId } from '../background/google-calendar.js';
+import { buildGoogleEventId, isGoogleEventMissingStatus } from '../background/google-calendar.js';
 
 const id = await buildGoogleEventId(
   'smdf',
@@ -19,5 +19,10 @@ const sanitized = await buildGoogleEventId(
 assert.match(sanitized, /^[0-9a-v]{5,80}$/);
 assert.equal(sanitized.includes('_'), false);
 assert.equal(/[w-zA-Z-]/.test(sanitized), false);
+
+assert.equal(isGoogleEventMissingStatus(404), true);
+assert.equal(isGoogleEventMissingStatus(410), true);
+assert.equal(isGoogleEventMissingStatus(400), false);
+assert.equal(isGoogleEventMissingStatus(500), false);
 
 console.log('Google Calendar event ids are Calendar API-safe.');

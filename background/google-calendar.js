@@ -348,6 +348,10 @@ function uniqueEventOps(ops) {
   return [...byId.values()];
 }
 
+export function isGoogleEventMissingStatus(status) {
+  return status === 404 || status === 410;
+}
+
 function formatGoogleBatchError(action, result, calendarId, op, operation) {
   const msg = result.json?.error?.message || result.text || `Failed to ${action}.`;
   return [
@@ -380,7 +384,7 @@ async function batchDeleteEventsIfExists(calendarId, auth, ops, report, stage) {
       deleted += 1;
       return;
     }
-    if (result.status === 404) return;
+    if (isGoogleEventMissingStatus(result.status)) return;
 
     const debug = formatGoogleBatchError('deleting event', result, calendarId, op, 'delete');
     report('error', debug);
@@ -421,7 +425,7 @@ async function batchUpsertEvents(calendarId, auth, ops, report, stage) {
       return;
     }
 
-    if (result.status === 404) {
+    if (isGoogleEventMissingStatus(result.status)) {
       applyRequests.push({
         method: 'POST',
         path: calendarEventsPath(calendarId),
