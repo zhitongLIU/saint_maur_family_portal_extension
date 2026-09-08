@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Politique de confidentialité — Saint-Maur Périscolaire Exporter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.7;
+      color: #222;
+      background: #f7f7f8;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 2rem 2.5rem;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    h1 { font-size: 1.5rem; margin-bottom: .25rem; }
+    .subtitle { color: #666; font-size: .9rem; margin-bottom: 2rem; }
+    h2 { font-size: 1.1rem; margin: 1.8rem 0 .6rem; color: #333; }
+    p, li { margin-bottom: .6rem; }
+    ul { padding-left: 1.4rem; }
+    li { margin-bottom: .3rem; }
+    strong { color: #111; }
+    .updated { margin-top: 2rem; font-size: .85rem; color: #888; border-top: 1px solid #eee; padding-top: 1rem; }
+    a { color: #0066cc; }
+    @media (max-width: 480px) {
+      .container { padding: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+<h1>Politique de confidentialité</h1>
+<p class="subtitle">Extension Chrome « Saint-Maur Périscolaire Exporter »</p>
+
+<p><strong>Dernière mise à jour :</strong> septembre 2025</p>
+
+<p>
+Cette extension Chrome (<strong>« Saint-Maur Périscolaire Exporter »</strong>) permet aux familles de
+Saint-Maur-des-Fossés d'exporter leurs réservations périscolaires du Portail Famille (AgoraPlus)
+au format ICS, et de convertir les factures PDF en CSV.
+</p>
+
+<p>
+Nous prenons très au sérieux la protection de vos données personnelles.
+Cette politique décrit quelles données sont collectées, comment elles sont utilisées,
+et quels sont vos droits.
+</p>
+
+<h2>1. Responsable du traitement</h2>
+<p>
+L'extension est développée et maintenue par un contributeur indépendant.
+Aucune entreprise ou organisation n'est impliquée dans la collecte de données.
+Pour toute question, vous pouvez ouvrir une <em>issue</em> sur le dépôt GitHub :
+<a href="https://github.com/zhitongLIU/saint_maur_family_portal_extension" target="_blank" rel="noopener">
+github.com/zhitongLIU/saint_maur_family_portal_extension</a>.
+</p>
+
+<h2>2. Données collectées et traitement</h2>
+
+<h3>2.1 Données de session du Portail Famille</h3>
+<ul>
+  <li>L'extension lit l'identifiant de session (<code>SESSION_ID_smdf</code>) stocké par le Portail Famille
+    dans le <code>sessionStorage</code> du navigateur, <strong>uniquement lorsque vous cliquez sur l'icône
+    de l'extension</strong>.</li>
+  <li>Cet identifiant est utilisé pour interroger l'API du Portail Famille
+    (<code>smdf.agoraplus.fr</code> / <code>portalssl.agoraplus.fr</code>) afin de récupérer
+    la liste de vos enfants et leurs réservations.</li>
+  <li>Aucune donnée de session n'est transmise à un serveur tiers (autre que le Portail Famille lui-même,
+    que vous utilisez déjà).</li>
+</ul>
+
+<h3>2.2 Réservations et calendrier</h3>
+<ul>
+  <li>Les données de réservation (dates, horaires, activités, annulations) sont récupérées depuis l'API
+    du Portail Famille et utilisées exclusivement pour générer un fichier ICS ou pour synchroniser
+    les événements vers votre compte Google Calendar (avec votre autorisation explicite).</li>
+  <li>Ces données ne sont <strong>jamais envoyées à un serveur tiers</strong>
+    (autre que le Portail Famille ou Google Calendar si vous activez la synchronisation).</li>
+</ul>
+
+<h3>2.3 Factures PDF</h3>
+<ul>
+  <li>Les fichiers PDF que vous glissez-déposez dans l'extension sont traités <strong>localement</strong>
+    dans votre navigateur, à l'aide de la bibliothèque PDF.js.</li>
+  <li>Aucune donnée extraite des PDF (montants, descriptions, catégories) n'est transmise à un serveur
+    externe.</li>
+</ul>
+
+<h3>2.4 Synchronisation Google Calendar (OAuth 2.0)</h3>
+<ul>
+  <li>Si vous choisissez d'utiliser la fonction « Sync to Google Calendar », l'extension demande
+    votre autorisation via le protocole OAuth 2.0.0</li>
+  <li>Les événements sont créés directement dans votre calendrier Google via l'API Google Calendar.
+    L'extension ne stocke ni ne transmet vos identifiants Google à aucun autre service.</li>
+  <li>Vous pouvez révoquer l'accès à tout moment depuis votre
+    <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">compte Google</a>.</li>
+</ul>
+
+<h3>2.5 Stockage local (chrome.storage.local)</h3>
+<ul>
+  <li>L'extension stocke localement, dans le navigateur, les paramètres suivants :
+    <ul>
+      <li>Identifiant de session (temporaire, pour la durée de la session active)</li>
+      <li>Période d'export sélectionnée (dates début/fin)</li>
+      <li>Jour de rappel mensuel de paiement (optionnel)</li>
+      <li>Jeton d'accès OAuth Google (temporaire, pour la synchronisation)</li>
+    </ul>
+  </li>
+  <li>Ces données ne quittent jamais votre navigateur et ne sont pas accessibles par le développeur.</li>
+  <li>Les données de session expirent avec votre session Portail Famille.</li>
+</ul>
+
+<h2>3. Base légale du traitement</h2>
+<p>
+Le traitement de vos données repose sur votre <strong>consentement</strong> explicite :
+vous utilisez activement l'extension et choisissez les fonctionnalités que vous activez
+(export ICS, synchronisation Google Calendar, conversion PDF).
+</p>
+
+<h2>4. Durée de conservation</h2>
+<ul>
+  <li>Les données de session et jetons OAuth sont conservés temporairement pendant la session active
+    et supprimés automatiquement à la déconnexion ou à l'expiration du jeton.</li>
+  <li>Les paramètres utilisateur (période d'export, rappel) sont conservés localement jusqu'à
+    ce que vous les modifiiez ou que vous désinstalliez l'extension.</li>
+  <li>Les fichiers ICS générés et les PDF importés ne sont pas conservés par l'extension —
+    ils sont sous votre contrôle sur votre système de fichiers.</li>
+</ul>
+
+<h2>5. Destinataires des données</h2>
+<ul>
+  <li><strong>Portail Famille (AgoraPlus)</strong> : destinataire nécessaire pour récupérer vos réservations
+    (vous êtes déjà utilisateur de ce service).</li>
+  <li><strong>Google Calendar</strong> : destinataire uniquement si vous activez la synchronisation Google Calendar.</li>
+  <li><strong>Aucun autre destinataire.</strong> Le développeur de l'extension n'a pas accès à vos données
+    personnelles.</li>
+</ul>
+
+<h2>6. Transferts hors UE</h2>
+<p>
+Les données échangées avec Google Calendar peuvent être traitées sur des serveurs situés aux États-Unis.
+Ce transfert est encadré par les clauses contractuelles types (CCT) de Google.
+Le Portail Famille (AgoraPlus) est hébergé en France.
+</p>
+
+<h2>7. Vos droits</h2>
+<p>Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez des droits suivants :</p>
+<ul>
+  <li>Droit d'accès à vos données</li>
+  <li>Droit de rectification</li>
+  <li>Droit à l'effacement (suppression des données stockées localement)</li>
+  <li>Droit à la limitation du traitement</li>
+  <li>Droit d'opposition</li>
+  <li>Droit à la portabilité</li>
+</ul>
+<p>
+Pour exercer ces droits, vous pouvez simplement désinstaller l'extension — toutes les données
+stockées localement seront supprimées. Pour les données hébergées par le Portail Famille ou Google,
+veuillez contacter directement ces services.
+</p>
+<p>
+Pour toute question, ouvrez une <em>issue</em> sur
+<a href="https://github.com/zhitongLIU/saint_maur_family_portal_extension" target="_blank" rel="noopener">GitHub</a>.
+</p>
+
+<h2>8. Sécurité</h2>
+<p>
+L'extension utilise <code>chrome.storage.local</code> (isolé par le navigateur) et le protocole HTTPS
+pour toutes les communications réseau. Aucune donnée n'est transmise en clair.
+Le code source est ouvert et auditable sur GitHub.
+</p>
+
+<h2>9. Modifications de cette politique</h2>
+<p>
+Cette politique peut être mise à jour. La date de « Dernière mise à jour » en haut de page
+indique la version en vigueur.
+</p>
+
+<div class="updated">
+  <p>Dépôt GitHub : <a href="https://github.com/zhitongLIU/saint_maur_family_portal_extension" target="_blank" rel="noopener">zhitongLIU/saint_maur_family_portal_extension</a></p>
+</div>
+
+</div>
+</body>
+</html>
